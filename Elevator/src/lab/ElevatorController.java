@@ -1,10 +1,10 @@
-
 package lab;
 
 public class ElevatorController {
 
 	private final Elevator elevator;
-	private final RequestManager requestManager;
+	private final HallRequestQueue hallRequestQueue;
+	private final DestinationList destinationList;
 
 	private final int minFloor;
 	private final int maxFloor;
@@ -14,10 +14,12 @@ public class ElevatorController {
 
 	private String boardingDirection;
 
-	public ElevatorController(Elevator elevator, RequestManager requestManager, int minFloor, int maxFloor) {
+	public ElevatorController(Elevator elevator, HallRequestQueue hallRequestQueue, DestinationList destinationList,
+			int minFloor, int maxFloor) {
 
 		this.elevator = elevator;
-		this.requestManager = requestManager;
+		this.hallRequestQueue = hallRequestQueue;
+		this.destinationList = destinationList;
 		this.minFloor = minFloor;
 		this.maxFloor = maxFloor;
 
@@ -51,13 +53,13 @@ public class ElevatorController {
 			return false;
 		}
 
-		if (!requestManager.addHallRequest(request)) {
+		if (!hallRequestQueue.addHallRequest(request)) {
 			System.out.println("This elevator request already exists.");
 			return false;
 		}
 
 		if (elevator.getCurrentFloor() == floor && elevator.getDirection().equals("IDLE") && !elevator.isDoorOpen()
-				&& !requestManager.hasDestinations()) {
+				&& !destinationList.hasDestinations()) {
 
 			serveHallRequestAtCurrentFloor(direction);
 		}
@@ -83,22 +85,28 @@ public class ElevatorController {
 		}
 
 		if (boardingDirection.equals("UP") && floor < elevator.getCurrentFloor()) {
+
 			System.out.println("UP direction requires a higher floor.");
 			return false;
 		}
 
 		if (boardingDirection.equals("DOWN") && floor > elevator.getCurrentFloor()) {
+
 			System.out.println("DOWN direction requires a lower floor.");
 			return false;
 		}
 
-		if (!requestManager.addDestination(floor)) {
+		// ตรวจสอบชั้นปลายทางซ้ำ
+		if (!destinationList.addDestination(floor)) {
+
 			destinationChosenForCurrentBoarding = true;
+
 			System.out.println("Destination floor " + floor + " is already scheduled.");
+
 			return true;
 		}
 
-		requestManager.sortDestinations(boardingDirection);
+		destinationList.sortDestinations(boardingDirection);
 
 		destinationChosenForCurrentBoarding = true;
 
@@ -115,7 +123,7 @@ public class ElevatorController {
 
 		if (elevator.getDirection().equals("IDLE")) {
 
-			String directionHere = requestManager.getFirstHallDirectionAtFloor(elevator.getCurrentFloor());
+			String directionHere = hallRequestQueue.getFirstHallDirectionAtFloor(elevator.getCurrentFloor());
 
 			if (!directionHere.equals("IDLE")) {
 				serveHallRequestAtCurrentFloor(directionHere);
@@ -139,13 +147,13 @@ public class ElevatorController {
 			elevator.setCurrentFloor(currentFloor - 1);
 		}
 
-		boolean stoppedForDestination = requestManager.removeDestination(elevator.getCurrentFloor());
+		boolean stoppedForDestination = destinationList.removeDestination(elevator.getCurrentFloor());
 
 		boolean pickedUp = false;
 
-		if (!requestManager.hasDestinations()) {
+		if (!destinationList.hasDestinations()) {
 
-			String waitingDirection = requestManager.getFirstHallDirectionAtFloor(elevator.getCurrentFloor());
+			String waitingDirection = hallRequestQueue.getFirstHallDirectionAtFloor(elevator.getCurrentFloor());
 
 			if (!waitingDirection.equals("IDLE")) {
 				pickedUp = serveHallRequestAtCurrentFloor(waitingDirection);
@@ -193,17 +201,17 @@ public class ElevatorController {
 		int currentFloor = elevator.getCurrentFloor();
 		String currentDirection = elevator.getDirection();
 
-		if (currentDirection.equals("UP") && requestManager.hasWorkAhead(currentFloor, "UP")) {
+		if (currentDirection.equals("UP") && hasWorkAhead(currentFloor, "UP")) {
 			return;
 		}
 
-		if (currentDirection.equals("DOWN") && requestManager.hasWorkAhead(currentFloor, "DOWN")) {
+		if (currentDirection.equals("DOWN") && hasWorkAhead(currentFloor, "DOWN")) {
 			return;
 		}
 
-		if (requestManager.hasDestinations()) {
+		if (destinationList.hasDestinations()) {
 
-			int targetFloor = requestManager.getDestinationFloors().get(0);
+			int targetFloor = destinationList.getDestinationFloors().get(0);
 
 			if (targetFloor > currentFloor) {
 				elevator.setDirection("UP");
@@ -218,9 +226,9 @@ public class ElevatorController {
 			return;
 		}
 
-		if (requestManager.hasHallRequests()) {
+		if (hallRequestQueue.hasHallRequests()) {
 
-			HallRequest request = requestManager.peekHallRequest();
+			HallRequest request = hallRequestQueue.peekHallRequest();
 			int targetFloor = request.getFloor();
 
 			if (targetFloor > currentFloor) {
@@ -239,11 +247,43 @@ public class ElevatorController {
 		elevator.setDirection("IDLE");
 	}
 
+	// Linear Search: ตรวจสอบว่ามีงานอยู่ข้างหน้าหรือไม่
+	public boolean hasWorkAhead(int currentFloor, String direction) {
+
+		for (int floor : destinationList.getDestinationFloors()) {
+
+			if (direction.equals("UP") && floor > currentFloor) {
+				return true;
+			}
+
+			if (direction.equals("DOWN") && floor < currentFloor) {
+				return true;
+			}
+		}
+
+		for (HallRequest request : hallRequestQueue.getRequestQueue()) {
+
+			if (!request.getDirection().equals(direction)) {
+				continue;
+			}
+
+			if (direction.equals("UP") && request.getFloor() > currentFloor) {
+				return true;
+			}
+
+			if (direction.equals("DOWN") && request.getFloor() < currentFloor) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
 	private boolean serveHallRequestAtCurrentFloor(String direction) {
 
 		int currentFloor = elevator.getCurrentFloor();
 
-		if (!requestManager.removeHallRequestsAtFloor(currentFloor, direction)) {
+		if (!hallRequestQueue.removeHallRequestsAtFloor(currentFloor, direction)) {
 			return false;
 		}
 
@@ -258,7 +298,9 @@ public class ElevatorController {
 			destinationChosenForCurrentBoarding = true;
 
 			System.out.println("Passengers picked up at Floor " + currentFloor + " (" + direction + ").");
+
 			System.out.println("An existing destination is available in this direction.");
+
 			System.out.println("The elevator can continue without selecting a destination again.");
 
 		} else {
@@ -266,6 +308,7 @@ public class ElevatorController {
 			destinationChosenForCurrentBoarding = false;
 
 			System.out.println("Passengers picked up at Floor " + currentFloor + " (" + direction + ").");
+
 			System.out.println("Please use Menu 2 to select a destination floor.");
 		}
 
@@ -274,9 +317,10 @@ public class ElevatorController {
 		return true;
 	}
 
+	// Linear Search: ตรวจสอบปลายทางในทิศทางที่กำลังเดินทาง
 	private boolean hasDestinationInDirection(int currentFloor, String direction) {
 
-		for (int floor : requestManager.getDestinationFloors()) {
+		for (int floor : destinationList.getDestinationFloors()) {
 
 			if (direction.equals("UP") && floor > currentFloor) {
 				return true;
@@ -296,7 +340,7 @@ public class ElevatorController {
 			return false;
 		}
 
-		return requestManager.hasHallRequests() || requestManager.hasDestinations() || elevator.isDoorOpen();
+		return hallRequestQueue.hasHallRequests() || destinationList.hasDestinations() || elevator.isDoorOpen();
 	}
 
 	public boolean isWaitingForDestinationInput() {
@@ -307,7 +351,11 @@ public class ElevatorController {
 		return elevator;
 	}
 
-	public RequestManager getRequestManager() {
-		return requestManager;
+	public HallRequestQueue getHallRequestQueue() {
+		return hallRequestQueue;
+	}
+
+	public DestinationList getDestinationList() {
+		return destinationList;
 	}
 }

@@ -1,4 +1,3 @@
-
 package lab;
 
 import java.util.Scanner;
@@ -15,18 +14,25 @@ public class Main {
 		Elevator elevator1 = new Elevator(1);
 		Elevator elevator2 = new Elevator(1);
 
-		RequestManager manager1 = new RequestManager();
-		RequestManager manager2 = new RequestManager();
+		HallRequestQueue queue1 = new HallRequestQueue();
+		HallRequestQueue queue2 = new HallRequestQueue();
 
-		ElevatorController controller1 = new ElevatorController(elevator1, manager1, MIN_FLOOR, MAX_FLOOR);
-		ElevatorController controller2 = new ElevatorController(elevator2, manager2, MIN_FLOOR, MAX_FLOOR);
+		DestinationList destinationList1 = new DestinationList();
+		DestinationList destinationList2 = new DestinationList();
+
+		ElevatorController controller1 = new ElevatorController(elevator1, queue1, destinationList1, MIN_FLOOR,
+				MAX_FLOOR);
+
+		ElevatorController controller2 = new ElevatorController(elevator2, queue2, destinationList2, MIN_FLOOR,
+				MAX_FLOOR);
 
 		ElevatorSystem system = new ElevatorSystem(controller1, controller2);
 
 		int choice;
 
 		do {
-			System.out.println("\n============================================");
+
+			System.out.println("\n\n\n============================================");
 			System.out.println("          ELEVATOR SYSTEM (Demo)");
 			System.out.println("============================================");
 			System.out.println("1. Call Elevator");
@@ -38,6 +44,7 @@ public class Main {
 			choice = readInt("Select menu: ");
 
 			switch (choice) {
+
 			case 1:
 				callElevator(system);
 				break;
@@ -77,6 +84,7 @@ public class Main {
 			String direction;
 
 			while (true) {
+
 				System.out.print("Direction (U/D): ");
 				direction = scanner.nextLine().trim().toUpperCase();
 
@@ -109,6 +117,7 @@ public class Main {
 			}
 
 			System.out.println("Elevator " + assignedElevator + " has been assigned.");
+
 			System.out.println("Elevator " + assignedElevator + " is assigned to respond to Floor " + floor + ".");
 
 			break;
@@ -120,6 +129,7 @@ public class Main {
 		int elevatorNumber;
 
 		while (true) {
+
 			elevatorNumber = readInt("Select Elevator (1 or 2): ");
 
 			if (elevatorNumber == 1 || elevatorNumber == 2) {
@@ -130,7 +140,9 @@ public class Main {
 		}
 
 		if (!system.isWaitingForDestinationInput(elevatorNumber)) {
+
 			System.out.println("No passenger is waiting to select a destination for Elevator " + elevatorNumber + ".");
+
 			return;
 		}
 
@@ -156,6 +168,7 @@ public class Main {
 		int choice;
 
 		do {
+
 			System.out.println("\n=====================================");
 			System.out.println("     ELEVATOR MOVEMENT & STATUS");
 			System.out.println("=====================================");
@@ -168,6 +181,7 @@ public class Main {
 			choice = readInt("Select menu: ");
 
 			switch (choice) {
+
 			case 1:
 				moveOneStep(system);
 				break;
@@ -205,7 +219,9 @@ public class Main {
 		}
 
 		while (system.hasWork()) {
+
 			system.moveElevators();
+
 			printSimulation(system.getElevator1(), system.getElevator2());
 		}
 
@@ -235,11 +251,13 @@ public class Main {
 		System.out.println("E2: Floor " + e2.getCurrentFloor() + " | Direction: " + e2.getDirection() + " | Door: "
 				+ (e2.isDoorOpen() ? "OPEN" : "CLOSED"));
 
-		System.out.println("\nE1 Destinations: " + controller1.getRequestManager().getDestinationFloors());
-		System.out.println("E1 Hall Requests: " + controller1.getRequestManager().getRequestQueue());
+		System.out.println("\nE1 Destinations: " + controller1.getDestinationList().getDestinationFloors());
 
-		System.out.println("\nE2 Destinations: " + controller2.getRequestManager().getDestinationFloors());
-		System.out.println("E2 Hall Requests: " + controller2.getRequestManager().getRequestQueue());
+		System.out.println("E1 Hall Requests: " + controller1.getHallRequestQueue().getRequestQueue());
+
+		System.out.println("\nE2 Destinations: " + controller2.getDestinationList().getDestinationFloors());
+
+		System.out.println("E2 Hall Requests: " + controller2.getHallRequestQueue().getRequestQueue());
 
 		System.out.println("=====================================");
 	}
@@ -268,12 +286,15 @@ public class Main {
 	private static int readInt(String message) {
 
 		while (true) {
+
 			System.out.print(message);
 			String input = scanner.nextLine();
 
 			try {
 				return Integer.parseInt(input.trim());
+
 			} catch (NumberFormatException e) {
+
 				System.out.println("Invalid input. Please enter a number.");
 			}
 		}
