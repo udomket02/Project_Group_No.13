@@ -42,7 +42,7 @@ public class HallRequestQueue {
 		return requestQueue.peek();
 	}
 
-	// ค้นหาทิศทางของคำขอที่ชั้นปัจจุบัน
+	// Linear Search: ค้นหาทิศทางของคำขอที่ชั้นปัจจุบัน
 	public String getFirstHallDirectionAtFloor(int floor) {
 
 		for (HallRequest request : requestQueue) {
@@ -65,10 +65,12 @@ public class HallRequestQueue {
 
 			HallRequest request = requestQueue.poll();
 
-			if (request.getFloor() == floor && request.getDirection().equals(direction)) {
-				found = true;
-			} else {
-				requestQueue.offer(request);
+			if (request != null) {
+				if (request.getFloor() == floor && request.getDirection().equals(direction)) {
+					found = true;
+				} else {
+					requestQueue.offer(request);
+				}
 			}
 		}
 

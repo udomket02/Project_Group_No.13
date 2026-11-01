@@ -58,8 +58,9 @@ public class ElevatorController {
 			return false;
 		}
 
-		if (elevator.getCurrentFloor() == floor && elevator.getDirection().equals("IDLE") && !elevator.isDoorOpen()
-				&& !destinationList.hasDestinations()) {
+		// หากลิฟต์อยู่ที่ชั้นนั้นพอดีและไม่มีงานอื่นค้างอยู่ ให้เปิดรับผู้โดยสารทันที
+		if (elevator.getCurrentFloor() == floor && !waitingForDestinationInput && !destinationList.hasDestinations()
+				&& (elevator.getDirection().equals("IDLE") || hallRequestQueue.getRequestQueue().size() == 1)) {
 
 			serveHallRequestAtCurrentFloor(direction);
 		}
@@ -147,25 +148,33 @@ public class ElevatorController {
 			elevator.setCurrentFloor(currentFloor - 1);
 		}
 
-		boolean stoppedForDestination = destinationList.removeDestination(elevator.getCurrentFloor());
+		int arrivedFloor = elevator.getCurrentFloor();
 
-		boolean pickedUp = false;
+		boolean stoppedForDestination = destinationList.removeDestination(arrivedFloor);
 
-		if (!destinationList.hasDestinations()) {
+		if (stoppedForDestination) {
+			elevator.openDoor();
+			System.out.println("Arrived at destination Floor " + arrivedFloor + ". Door opened.");
+		}
 
-			String waitingDirection = hallRequestQueue.getFirstHallDirectionAtFloor(elevator.getCurrentFloor());
+		// 1. รับผู้โดยสารที่ไปทิศทางเดียวกับที่ลิฟต์กำลังเคลื่อนที่ก่อน
+		boolean pickedUp = serveHallRequestAtCurrentFloor(movingDirection);
+
+		// 2. หากไม่มีคนไปทิศทางเดียวกัน และไม่มีงานข้างหน้าในทิศทางเดิมแล้ว
+		// จึงรับคนทิศทางตรงข้ามที่ชั้นนี้ได้
+		if (!pickedUp && !hasWorkAhead(arrivedFloor, movingDirection)) {
+
+			String waitingDirection = hallRequestQueue.getFirstHallDirectionAtFloor(arrivedFloor);
 
 			if (!waitingDirection.equals("IDLE")) {
 				pickedUp = serveHallRequestAtCurrentFloor(waitingDirection);
 			}
-
-		} else {
-
-			pickedUp = serveHallRequestAtCurrentFloor(movingDirection);
 		}
 
-		if (stoppedForDestination && !pickedUp) {
-			elevator.openDoor();
+		// หากส่งผู้โดยสารครบและไม่มีคำขอค้างอยู่ ให้ปรับสถานะกลับเป็น IDLE
+		if (stoppedForDestination && !pickedUp && !destinationList.hasDestinations()
+				&& !hallRequestQueue.hasHallRequests()) {
+			elevator.setDirection("IDLE");
 		}
 	}
 
@@ -173,7 +182,8 @@ public class ElevatorController {
 
 		if (waitingForDestinationInput) {
 
-			if (!destinationChosenForCurrentBoarding) {
+			if (!destinationChosenForCurrentBoarding
+					&& !hasDestinationInDirection(elevator.getCurrentFloor(), boardingDirection)) {
 				System.out.println("Please select at least one destination floor.");
 				return false;
 			}
@@ -263,10 +273,6 @@ public class ElevatorController {
 
 		for (HallRequest request : hallRequestQueue.getRequestQueue()) {
 
-			if (!request.getDirection().equals(direction)) {
-				continue;
-			}
-
 			if (direction.equals("UP") && request.getFloor() > currentFloor) {
 				return true;
 			}
@@ -292,23 +298,14 @@ public class ElevatorController {
 
 		waitingForDestinationInput = true;
 		boardingDirection = direction;
+		destinationChosenForCurrentBoarding = false;
+
+		System.out.println("Passengers picked up at Floor " + currentFloor + " (" + direction + ").");
 
 		if (hasDestinationInDirection(currentFloor, direction)) {
-
-			destinationChosenForCurrentBoarding = true;
-
-			System.out.println("Passengers picked up at Floor " + currentFloor + " (" + direction + ").");
-
 			System.out.println("An existing destination is available in this direction.");
-
-			System.out.println("The elevator can continue without selecting a destination again.");
-
+			System.out.println("Please use Menu 2 to add a destination floor, or Move One Step to continue.");
 		} else {
-
-			destinationChosenForCurrentBoarding = false;
-
-			System.out.println("Passengers picked up at Floor " + currentFloor + " (" + direction + ").");
-
 			System.out.println("Please use Menu 2 to select a destination floor.");
 		}
 
@@ -340,7 +337,7 @@ public class ElevatorController {
 			return false;
 		}
 
-		return hallRequestQueue.hasHallRequests() || destinationList.hasDestinations() || elevator.isDoorOpen();
+		return hallRequestQueue.hasHallRequests() || destinationList.hasDestinations();
 	}
 
 	public boolean isWaitingForDestinationInput() {

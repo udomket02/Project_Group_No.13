@@ -59,49 +59,46 @@ public class Main {
 
 	private static void callElevator(ElevatorController controller) {
 
-		while (true) {
-			int floor = readInt("Enter your floor (1-6): ");
+		int floor = readInt("Enter your floor (1-6): ");
 
-			if (floor < MIN_FLOOR || floor > MAX_FLOOR) {
-				System.out.println("Invalid floor. Please enter 1-6.");
-				continue;
-			}
-
-			String direction;
-
-			while (true) {
-				System.out.print("Direction (U/D): ");
-				direction = scanner.nextLine().trim().toUpperCase();
-
-				if (direction.equals("U") || direction.equals("D")) {
-					break;
-				}
-
-				System.out.println("Invalid direction. Please enter U or D.");
-			}
-
-			if (floor == MAX_FLOOR && direction.equals("U")) {
-				System.out.println("Cannot go UP from the top floor.");
-				continue;
-			}
-
-			if (floor == MIN_FLOOR && direction.equals("D")) {
-				System.out.println("Cannot go DOWN from the ground floor.");
-				continue;
-			}
-
-			String fullDirection = direction.equals("U") ? "UP" : "DOWN";
-
-			HallRequest request = new HallRequest(floor, fullDirection);
-
-			if (!controller.addHallRequest(request)) {
-				System.out.println("Request could not be added. Please try again.");
-				continue;
-			}
-
-			System.out.println("Elevator has been assigned to Floor " + floor + ".");
-			break;
+		if (floor < MIN_FLOOR || floor > MAX_FLOOR) {
+			System.out.println("Invalid floor. Please enter 1-6.");
+			return;
 		}
+
+		String direction;
+
+		while (true) {
+			System.out.print("Direction (U/D): ");
+			direction = scanner.nextLine().trim().toUpperCase();
+
+			if (direction.equals("U") || direction.equals("D")) {
+				break;
+			}
+
+			System.out.println("Invalid direction. Please enter U or D.");
+		}
+
+		if (floor == MAX_FLOOR && direction.equals("U")) {
+			System.out.println("Cannot go UP from the top floor.");
+			return;
+		}
+
+		if (floor == MIN_FLOOR && direction.equals("D")) {
+			System.out.println("Cannot go DOWN from the ground floor.");
+			return;
+		}
+
+		String fullDirection = direction.equals("U") ? "UP" : "DOWN";
+
+		HallRequest request = new HallRequest(floor, fullDirection);
+
+		if (!controller.addHallRequest(request)) {
+			System.out.println("Request could not be added. Please try again.");
+			return;
+		}
+
+		System.out.println("Elevator has been assigned to Floor " + floor + ".");
 	}
 
 	private static void selectDestination(ElevatorController controller) {
@@ -111,18 +108,14 @@ public class Main {
 			return;
 		}
 
-		while (true) {
-			int floor = readInt("Enter destination floor (1-6): ");
+		int floor = readInt("Enter destination floor (1-6): ");
 
-			if (floor < MIN_FLOOR || floor > MAX_FLOOR) {
-				System.out.println("Invalid floor. Please enter 1-6.");
-				continue;
-			}
+		if (floor < MIN_FLOOR || floor > MAX_FLOOR) {
+			System.out.println("Invalid floor. Please enter 1-6.");
+			return;
+		}
 
-			if (controller.addDestination(floor)) {
-				break;
-			}
-
+		if (!controller.addDestination(floor)) {
 			System.out.println("Please enter a valid destination floor.");
 		}
 	}
@@ -170,7 +163,11 @@ public class Main {
 	private static void autoSimulation(ElevatorController controller) {
 
 		if (!controller.canAutoRun()) {
-			System.out.println("No elevator movement available.");
+			if (controller.isWaitingForDestinationInput()) {
+				System.out.println("Passenger is boarding. Please select a destination floor in Menu 2 first.");
+			} else {
+				System.out.println("No elevator movement available.");
+			}
 			return;
 		}
 
