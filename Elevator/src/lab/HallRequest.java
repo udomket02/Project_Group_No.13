@@ -1,4 +1,3 @@
-
 package lab;
 
 public class HallRequest {

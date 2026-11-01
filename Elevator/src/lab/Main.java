@@ -11,27 +11,15 @@ public class Main {
 
 	public static void main(String[] args) {
 
-		Elevator elevator1 = new Elevator(1);
-		Elevator elevator2 = new Elevator(1);
+		Elevator elevator = new Elevator(1);
+		HallRequestQueue queue = new HallRequestQueue();
+		DestinationList destinationList = new DestinationList();
 
-		HallRequestQueue queue1 = new HallRequestQueue();
-		HallRequestQueue queue2 = new HallRequestQueue();
-
-		DestinationList destinationList1 = new DestinationList();
-		DestinationList destinationList2 = new DestinationList();
-
-		ElevatorController controller1 = new ElevatorController(elevator1, queue1, destinationList1, MIN_FLOOR,
-				MAX_FLOOR);
-
-		ElevatorController controller2 = new ElevatorController(elevator2, queue2, destinationList2, MIN_FLOOR,
-				MAX_FLOOR);
-
-		ElevatorSystem system = new ElevatorSystem(controller1, controller2);
+		ElevatorController controller = new ElevatorController(elevator, queue, destinationList, MIN_FLOOR, MAX_FLOOR);
 
 		int choice;
 
 		do {
-
 			System.out.println("\n\n\n============================================");
 			System.out.println("          ELEVATOR SYSTEM (Demo)");
 			System.out.println("============================================");
@@ -44,17 +32,16 @@ public class Main {
 			choice = readInt("Select menu: ");
 
 			switch (choice) {
-
 			case 1:
-				callElevator(system);
+				callElevator(controller);
 				break;
 
 			case 2:
-				selectDestination(system);
+				selectDestination(controller);
 				break;
 
 			case 3:
-				movementStatusMenu(system);
+				movementStatusMenu(controller);
 				break;
 
 			case 0:
@@ -70,10 +57,9 @@ public class Main {
 		scanner.close();
 	}
 
-	private static void callElevator(ElevatorSystem system) {
+	private static void callElevator(ElevatorController controller) {
 
 		while (true) {
-
 			int floor = readInt("Enter your floor (1-6): ");
 
 			if (floor < MIN_FLOOR || floor > MAX_FLOOR) {
@@ -84,7 +70,6 @@ public class Main {
 			String direction;
 
 			while (true) {
-
 				System.out.print("Direction (U/D): ");
 				direction = scanner.nextLine().trim().toUpperCase();
 
@@ -96,12 +81,12 @@ public class Main {
 			}
 
 			if (floor == MAX_FLOOR && direction.equals("U")) {
-				System.out.println("Cannot go UP from the top floor. Please enter again.");
+				System.out.println("Cannot go UP from the top floor.");
 				continue;
 			}
 
 			if (floor == MIN_FLOOR && direction.equals("D")) {
-				System.out.println("Cannot go DOWN from the ground floor. Please enter again.");
+				System.out.println("Cannot go DOWN from the ground floor.");
 				continue;
 			}
 
@@ -109,45 +94,24 @@ public class Main {
 
 			HallRequest request = new HallRequest(floor, fullDirection);
 
-			int assignedElevator = system.callElevator(request);
-
-			if (assignedElevator == 0) {
-				System.out.println("This request already exists. Please enter another request.");
+			if (!controller.addHallRequest(request)) {
+				System.out.println("Request could not be added. Please try again.");
 				continue;
 			}
 
-			System.out.println("Elevator " + assignedElevator + " has been assigned.");
-
-			System.out.println("Elevator " + assignedElevator + " is assigned to respond to Floor " + floor + ".");
-
+			System.out.println("Elevator has been assigned to Floor " + floor + ".");
 			break;
 		}
 	}
 
-	private static void selectDestination(ElevatorSystem system) {
+	private static void selectDestination(ElevatorController controller) {
 
-		int elevatorNumber;
-
-		while (true) {
-
-			elevatorNumber = readInt("Select Elevator (1 or 2): ");
-
-			if (elevatorNumber == 1 || elevatorNumber == 2) {
-				break;
-			}
-
-			System.out.println("Invalid elevator number. Please enter 1 or 2.");
-		}
-
-		if (!system.isWaitingForDestinationInput(elevatorNumber)) {
-
-			System.out.println("No passenger is waiting to select a destination for Elevator " + elevatorNumber + ".");
-
+		if (!controller.isWaitingForDestinationInput()) {
+			System.out.println("No passenger is waiting to select a destination.");
 			return;
 		}
 
 		while (true) {
-
 			int floor = readInt("Enter destination floor (1-6): ");
 
 			if (floor < MIN_FLOOR || floor > MAX_FLOOR) {
@@ -155,7 +119,7 @@ public class Main {
 				continue;
 			}
 
-			if (system.selectDestination(elevatorNumber, floor)) {
+			if (controller.addDestination(floor)) {
 				break;
 			}
 
@@ -163,13 +127,12 @@ public class Main {
 		}
 	}
 
-	private static void movementStatusMenu(ElevatorSystem system) {
+	private static void movementStatusMenu(ElevatorController controller) {
 
 		int choice;
 
 		do {
-
-			System.out.println("\n=====================================");
+			System.out.println("=====================================");
 			System.out.println("     ELEVATOR MOVEMENT & STATUS");
 			System.out.println("=====================================");
 			System.out.println("1. Move One Step");
@@ -181,17 +144,17 @@ public class Main {
 			choice = readInt("Select menu: ");
 
 			switch (choice) {
-
 			case 1:
-				moveOneStep(system);
+				controller.step();
+				printSimulation(controller);
 				break;
 
 			case 2:
-				autoSimulation(system);
+				autoSimulation(controller);
 				break;
 
 			case 3:
-				printSimulation(system.getElevator1(), system.getElevator2());
+				printSimulation(controller);
 				break;
 
 			case 0:
@@ -204,97 +167,74 @@ public class Main {
 		} while (choice != 0);
 	}
 
-	private static void moveOneStep(ElevatorSystem system) {
+	private static void autoSimulation(ElevatorController controller) {
 
-		system.moveElevators();
-
-		printSimulation(system.getElevator1(), system.getElevator2());
-	}
-
-	private static void autoSimulation(ElevatorSystem system) {
-
-		if (!system.hasWork()) {
+		if (!controller.canAutoRun()) {
 			System.out.println("No elevator movement available.");
 			return;
 		}
 
-		while (system.hasWork()) {
-
-			system.moveElevators();
-
-			printSimulation(system.getElevator1(), system.getElevator2());
+		while (controller.canAutoRun()) {
+			controller.step();
+			printSimulation(controller);
 		}
 
 		System.out.println("Auto Simulation finished.");
 	}
 
-	private static void printSimulation(ElevatorController controller1, ElevatorController controller2) {
+	private static void printSimulation(ElevatorController controller) {
 
-		Elevator e1 = controller1.getElevator();
-		Elevator e2 = controller2.getElevator();
+		Elevator elevator = controller.getElevator();
 
 		System.out.println("\n========== ELEVATOR STATUS ==========");
 
 		for (int floor = MAX_FLOOR; floor >= MIN_FLOOR; floor--) {
-
-			String display1 = getElevatorDisplay(e1, floor, "E1");
-			String display2 = getElevatorDisplay(e2, floor, "E2");
-
-			System.out.println("Floor " + floor + " | " + display1 + " | " + display2);
+			String display = getElevatorDisplay(elevator, floor);
+			System.out.println("Floor " + floor + " | " + display);
 		}
 
 		System.out.println("-------------------------------------");
+		System.out.println("Current Floor: " + elevator.getCurrentFloor());
+		System.out.println("Direction: " + elevator.getDirection());
+		System.out.println("Door: " + (elevator.isDoorOpen() ? "OPEN" : "CLOSED"));
 
-		System.out.println("E1: Floor " + e1.getCurrentFloor() + " | Direction: " + e1.getDirection() + " | Door: "
-				+ (e1.isDoorOpen() ? "OPEN" : "CLOSED"));
+		System.out.println("\nDestinations: " + controller.getDestinationList().getDestinationFloors());
 
-		System.out.println("E2: Floor " + e2.getCurrentFloor() + " | Direction: " + e2.getDirection() + " | Door: "
-				+ (e2.isDoorOpen() ? "OPEN" : "CLOSED"));
-
-		System.out.println("\nE1 Destinations: " + controller1.getDestinationList().getDestinationFloors());
-
-		System.out.println("E1 Hall Requests: " + controller1.getHallRequestQueue().getRequestQueue());
-
-		System.out.println("\nE2 Destinations: " + controller2.getDestinationList().getDestinationFloors());
-
-		System.out.println("E2 Hall Requests: " + controller2.getHallRequestQueue().getRequestQueue());
+		System.out.println("Hall Requests: " + controller.getHallRequestQueue().getRequestQueue());
 
 		System.out.println("=====================================");
 	}
 
-	private static String getElevatorDisplay(Elevator elevator, int floor, String name) {
+	private static String getElevatorDisplay(Elevator elevator, int floor) {
 
 		if (elevator.getCurrentFloor() != floor) {
 			return "       ";
 		}
 
 		if (elevator.isDoorOpen()) {
-			return "[" + name + " OPEN]";
+			return "[ OPEN ]";
 		}
 
 		if (elevator.getDirection().equals("UP")) {
-			return "[" + name + " ▲]";
+			return "[  ▲  ]";
 		}
 
 		if (elevator.getDirection().equals("DOWN")) {
-			return "[" + name + " ▼]";
+			return "[  ▼  ]";
 		}
 
-		return "[" + name + " ■]";
+		return "[ IDLE ]";
 	}
 
 	private static int readInt(String message) {
 
 		while (true) {
-
 			System.out.print(message);
 			String input = scanner.nextLine();
 
 			try {
 				return Integer.parseInt(input.trim());
-
 			} catch (NumberFormatException e) {
-
 				System.out.println("Invalid input. Please enter a number.");
 			}
 		}

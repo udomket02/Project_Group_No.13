@@ -66,11 +66,8 @@ public class HallRequestQueue {
 			HallRequest request = requestQueue.poll();
 
 			if (request.getFloor() == floor && request.getDirection().equals(direction)) {
-
 				found = true;
-
 			} else {
-
 				requestQueue.offer(request);
 			}
 		}
